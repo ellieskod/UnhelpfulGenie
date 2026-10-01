@@ -4,11 +4,11 @@ A simple Flask-based Text-to-Speech (TTS) service that can be deployed directly 
 
 ## Features
 
-- ✅ Text-to-Speech conversion using pyttsx3 (no external API required)
-- ✅ REST API endpoints for easy integration
-- ✅ Arduino-friendly `/download` endpoint for fetching the latest audio
-- ✅ Easy deployment to Railway from GitHub
-- ✅ Persistent audio file storage
+- Text-to-Speech conversion using pyttsx3 (no external API required)
+- REST API endpoints for easy integration
+- Arduino-friendly `/download` endpoint for fetching the latest audio
+- Easy deployment to Railway from GitHub
+- Persistent audio file storage
 
 ## API Endpoints
 
