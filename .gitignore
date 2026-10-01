@@ -19,7 +19,7 @@ wheels/
 .installed.cfg
 *.egg
 audio_files/
-*.mp3
+*.wav
 .env
 .venv
 env/

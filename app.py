@@ -1,8 +1,10 @@
 import os
 from gtts import gTTS
+from pydub import AudioSegment
 from flask import Flask, jsonify, send_file, request
 from datetime import datetime
 import glob
+import tempfile
 
 app = Flask(__name__)
 
@@ -13,7 +15,7 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 
 def get_latest_audio():
     """Get the path to the most recently created audio file."""
-    audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.mp3'))
+    audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
     if not audio_files:
         return None
     return max(audio_files, key=os.path.getctime)
@@ -48,20 +50,34 @@ def synthesize():
         
         # Generate filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
-        filename = f'message_{timestamp}.mp3'
+        filename = f'message_{timestamp}.wav'
         filepath = os.path.join(AUDIO_DIR, filename)
         
-        # Convert text to speech using Google TTS
-        tts = gTTS(text=text, lang='en', slow=False)
-        tts.save(filepath)
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Text converted to audio',
-            'filename': filename,
-            'filepath': filepath,
-            'size_bytes': os.path.getsize(filepath)
-        }), 201
+        try:
+            # Convert text to speech using Google TTS (generates MP3)
+            tts = gTTS(text=text, lang='en', slow=False)
+            
+            # Save to temporary MP3 file
+            temp_mp3 = os.path.join(tempfile.gettempdir(), f'temp_{timestamp}.mp3')
+            tts.save(temp_mp3)
+            
+            # Convert MP3 to WAV
+            audio = AudioSegment.from_mp3(temp_mp3)
+            audio.export(filepath, format='wav')
+            
+            # Clean up temporary MP3 file
+            if os.path.exists(temp_mp3):
+                os.remove(temp_mp3)
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Text converted to audio',
+                'filename': filename,
+                'filepath': filepath,
+                'size_bytes': os.path.getsize(filepath)
+            }), 201
+        except Exception as e:
+            return jsonify({'error': f'Failed to convert text to speech: {str(e)}'}), 500
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -80,7 +96,7 @@ def download():
         
         return send_file(
             latest_file,
-            mimetype='audio/mpeg',
+            mimetype='audio/wav',
             as_attachment=True,
             download_name=os.path.basename(latest_file)
         )
@@ -95,7 +111,7 @@ def list_files():
     GET endpoint to list all available audio files.
     """
     try:
-        audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.mp3'))
+        audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
         audio_files.sort(key=os.path.getctime, reverse=True)
         
         files_info = []
