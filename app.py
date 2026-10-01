@@ -1,5 +1,5 @@
 import os
-import pyttsx3
+from gtts import gTTS
 from flask import Flask, jsonify, send_file, request
 from datetime import datetime
 import glob
@@ -10,17 +10,13 @@ app = Flask(__name__)
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), 'audio_files')
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# Initialize TTS engine
-tts_engine = pyttsx3.init()
-tts_engine.setProperty('rate', 150)  # Speed of speech
 
-
-def get_latest_wav():
-    """Get the path to the most recently created WAV file."""
-    wav_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
-    if not wav_files:
+def get_latest_audio():
+    """Get the path to the most recently created audio file."""
+    audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.mp3'))
+    if not audio_files:
         return None
-    return max(wav_files, key=os.path.getctime)
+    return max(audio_files, key=os.path.getctime)
 
 
 @app.route('/health', methods=['GET'])
@@ -52,18 +48,19 @@ def synthesize():
         
         # Generate filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
-        filename = f'message_{timestamp}.wav'
+        filename = f'message_{timestamp}.mp3'
         filepath = os.path.join(AUDIO_DIR, filename)
         
-        # Save audio file
-        tts_engine.save_to_file(text, filepath)
-        tts_engine.runAndWait()
+        # Convert text to speech using Google TTS
+        tts = gTTS(text=text, lang='en', slow=False)
+        tts.save(filepath)
         
         return jsonify({
             'status': 'success',
             'message': 'Text converted to audio',
             'filename': filename,
-            'filepath': filepath
+            'filepath': filepath,
+            'size_bytes': os.path.getsize(filepath)
         }), 201
     
     except Exception as e:
@@ -76,14 +73,14 @@ def download():
     GET endpoint for Arduino to download the latest WAV file.
     """
     try:
-        latest_file = get_latest_wav()
+        latest_file = get_latest_audio()
         
         if not latest_file:
             return jsonify({'error': 'No audio files available'}), 404
         
         return send_file(
             latest_file,
-            mimetype='audio/wav',
+            mimetype='audio/mpeg',
             as_attachment=True,
             download_name=os.path.basename(latest_file)
         )
@@ -98,11 +95,11 @@ def list_files():
     GET endpoint to list all available audio files.
     """
     try:
-        wav_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
-        wav_files.sort(key=os.path.getctime, reverse=True)
+        audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.mp3'))
+        audio_files.sort(key=os.path.getctime, reverse=True)
         
         files_info = []
-        for filepath in wav_files:
+        for filepath in audio_files:
             files_info.append({
                 'filename': os.path.basename(filepath),
                 'size_bytes': os.path.getsize(filepath),
