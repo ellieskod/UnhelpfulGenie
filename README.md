@@ -4,7 +4,8 @@ A simple Flask-based Text-to-Speech (TTS) service that can be deployed directly 
 
 ## Features
 
-- Text-to-Speech conversion using pyttsx3 (no external API required)
+- ✅ Text-to-Speech conversion using gTTS (no system dependencies)
+- ✅ High-quality WAV output optimized for embedded systems
 - REST API endpoints for easy integration
 - Arduino-friendly `/download` endpoint for fetching the latest audio
 - Easy deployment to Railway from GitHub
@@ -28,9 +29,17 @@ Convert text to speech and save as WAV file.
   "status": "success",
   "message": "Text converted to audio",
   "filename": "message_20240101_120530_123.wav",
-  "filepath": "/path/to/message_20240101_120530_123.wav"
+  "filepath": "/path/to/message_20240101_120530_123.wav",
+  "size_bytes": 12345
 }
 ```
+
+**Audio Specs:**
+- Format: WAV (PCM)
+- Sample Rate: 16 kHz (optimized for Arduino)
+- Channels: Mono
+- Bitrate: 192 kbps
+- Speech Speed: Slow (clear pronunciation)
 
 ### GET `/download`
 Download the most recently created WAV file. Perfect for Arduino to fetch the latest message.
@@ -216,13 +225,20 @@ WAV files can be large. Monitor your storage and consider cleaning up old files 
 
 ## Customization
 
-### Change speech rate
-Edit `app.py` line with `tts_engine.setProperty('rate', 150)`:
-- Lower values = slower speech
-- Higher values = faster speech
+### Change speech speed
+Edit `app.py` line with `slow=True` parameter in gTTS initialization:
+- `slow=True` - Slower, clearer speech (default, better for Arduino)
+- `slow=False` - Normal speed (faster)
 
-### Change audio directory
-Edit the `AUDIO_DIR` variable in `app.py` to use a different storage location.
+### Adjust audio sample rate
+Edit the `set_frame_rate()` call in `app.py`:
+- `16000` - 16 kHz (current, optimized for embedded systems, smaller files)
+- `44100` - 44.1 kHz (CD quality, larger files)
+
+### Change audio channels
+Edit the `set_channels()` call:
+- `1` - Mono (current, smaller files, suitable for single speaker)
+- `2` - Stereo (larger files)
 
 ### Add authentication
 Wrap endpoints with authentication (e.g., using Flask-HTTPAuth):

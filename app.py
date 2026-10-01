@@ -54,16 +54,21 @@ def synthesize():
         filepath = os.path.join(AUDIO_DIR, filename)
         
         try:
-            # Convert text to speech using Google TTS (generates MP3)
-            tts = gTTS(text=text, lang='en', slow=False)
+            # Convert text to speech using Google TTS with slower speech for clarity
+            # slow=True makes speech slower and clearer for Arduino playback
+            tts = gTTS(text=text, lang='en', slow=True)
             
             # Save to temporary MP3 file
             temp_mp3 = os.path.join(tempfile.gettempdir(), f'temp_{timestamp}.mp3')
             tts.save(temp_mp3)
             
-            # Convert MP3 to WAV
+            # Convert MP3 to WAV with high quality
             audio = AudioSegment.from_mp3(temp_mp3)
-            audio.export(filepath, format='wav')
+            
+            # Export as WAV with 16kHz sample rate (good for Arduino, reduces file size)
+            # frame_rate=16000, channels=1 (mono) for embedded systems
+            audio = audio.set_frame_rate(16000).set_channels(1)
+            audio.export(filepath, format='wav', bitrate='192k', parameters=['-q:a', '9'])
             
             # Clean up temporary MP3 file
             if os.path.exists(temp_mp3):
