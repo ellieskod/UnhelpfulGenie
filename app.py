@@ -61,7 +61,7 @@ def get_latest_audio():
 def synthesize_text(text: str) -> dict:
     """
     Convert text to speech and save as WAV file.
-    Optimized for Arduino Nano: 4kHz mono (~0.5-0.75 KB files).
+    Optimized for Arduino Nano: 8kHz mono with slow speech (~1-1.5 KB files).
     Returns a dict with status, filename, filepath, and size_bytes.
     """
     if not text or not text.strip():
@@ -73,18 +73,18 @@ def synthesize_text(text: str) -> dict:
         filename = f'message_{timestamp}.wav'
         filepath = os.path.join(AUDIO_DIR, filename)
         
-        # Convert text to speech using Google TTS with slower speech for clarity
+        # Convert text to speech using Google TTS with slowest speech for clarity
         tts = gTTS(text=text.strip(), lang='en', slow=True)
         
         # Save to temporary MP3 file
         temp_mp3 = os.path.join(tempfile.gettempdir(), f'temp_{timestamp}.mp3')
         tts.save(temp_mp3)
         
-        # Convert MP3 to WAV with ultra-low quality for Nano
+        # Convert MP3 to WAV with low quality for Nano
         audio = AudioSegment.from_mp3(temp_mp3)
         
-        # Ultra-low quality: 4kHz mono (~0.5-0.75 KB files)
-        audio = audio.set_frame_rate(4000)
+        # Low quality: 8kHz mono (~1-1.5 KB files) with slow speech
+        audio = audio.set_frame_rate(8000)
         audio = audio.set_channels(1)
         audio.export(filepath, format='wav')
         
