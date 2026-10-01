@@ -65,10 +65,10 @@ def synthesize():
             # Convert MP3 to WAV with high quality
             audio = AudioSegment.from_mp3(temp_mp3)
             
-            # Export as WAV with 16kHz sample rate (good for Arduino, reduces file size)
-            # frame_rate=16000, channels=1 (mono) for embedded systems
-            audio = audio.set_frame_rate(16000).set_channels(1)
-            audio.export(filepath, format='wav', bitrate='192k', parameters=['-q:a', '9'])
+            # Export as WAV with 44.1kHz sample rate (CD quality for better audio fidelity)
+            # Keep stereo for better sound quality
+            audio = audio.set_frame_rate(44100)
+            audio.export(filepath, format='wav')
             
             # Clean up temporary MP3 file
             if os.path.exists(temp_mp3):

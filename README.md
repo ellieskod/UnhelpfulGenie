@@ -36,9 +36,9 @@ Convert text to speech and save as WAV file.
 
 **Audio Specs:**
 - Format: WAV (PCM)
-- Sample Rate: 16 kHz (optimized for Arduino)
-- Channels: Mono
-- Bitrate: 192 kbps
+- Sample Rate: 44.1 kHz (CD quality for optimal clarity)
+- Channels: Stereo
+- Bitrate: Lossless
 - Speech Speed: Slow (clear pronunciation)
 
 ### GET `/download`
@@ -232,13 +232,14 @@ Edit `app.py` line with `slow=True` parameter in gTTS initialization:
 
 ### Adjust audio sample rate
 Edit the `set_frame_rate()` call in `app.py`:
-- `16000` - 16 kHz (current, optimized for embedded systems, smaller files)
-- `44100` - 44.1 kHz (CD quality, larger files)
+- `44100` - 44.1 kHz (current, CD quality, better for high-fidelity audio)
+- `16000` - 16 kHz (lower quality but smaller files, optimized for embedded systems)
+- `22050` - 22.05 kHz (middle ground)
 
 ### Change audio channels
-Edit the `set_channels()` call:
-- `1` - Mono (current, smaller files, suitable for single speaker)
-- `2` - Stereo (larger files)
+To modify audio channels, add this line after `audio = AudioSegment.from_mp3(temp_mp3)`:
+- `audio = audio.set_channels(1)` - Mono (smaller files)
+- `audio = audio.set_channels(2)` - Stereo (current, better quality)
 
 ### Add authentication
 Wrap endpoints with authentication (e.g., using Flask-HTTPAuth):
