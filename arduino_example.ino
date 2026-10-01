@@ -41,13 +41,25 @@ void setup() {
   
   delay(2000);
   
-  // Example 2: Download the latest audio file
+  // Example 2: Get a random refusal message
+  Serial.println("\n--- Getting refusal message ---");
+  getRefusalMessage();
+  
+  delay(2000);
+  
+  // Example 3: Get a random greeting message
+  Serial.println("\n--- Getting greeting message ---");
+  getGreetingMessage();
+  
+  delay(2000);
+  
+  // Example 4: Download the latest audio file
   Serial.println("\n--- Downloading latest audio ---");
   downloadLatestAudio();
   
   delay(2000);
   
-  // Example 3: List available files
+  // Example 5: List available files
   Serial.println("\n--- Listing audio files ---");
   listAudioFiles();
 }
@@ -128,6 +140,86 @@ void sendTextToSynthesize(String text) {
         Serial.print("Filename: ");
         Serial.println(responseDoc["filename"].as<String>());
       }
+    }
+  } else {
+    Serial.print("HTTP Request failed. Error: ");
+    Serial.println(http.errorToString(httpCode).c_str());
+  }
+  
+  http.end();
+}
+
+/**
+   Get a random refusal message from the genie
+*/
+void getRefusalMessage() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected!");
+    return;
+  }
+  
+  HTTPClient http;
+  String url = String(serviceUrl) + "/refuse";
+  
+  http.begin(url);
+  
+  int httpCode = http.GET();
+  
+  if (httpCode > 0) {
+    String response = http.getString();
+    
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, response);
+    
+    if (!error) {
+      if (doc["status"] == "success") {
+        Serial.print("Refusal: ");
+        Serial.println(doc["text"].as<String>());
+        Serial.print("Filename: ");
+        Serial.println(doc["filename"].as<String>());
+      }
+    } else {
+      Serial.println("Failed to parse JSON response");
+    }
+  } else {
+    Serial.print("HTTP Request failed. Error: ");
+    Serial.println(http.errorToString(httpCode).c_str());
+  }
+  
+  http.end();
+}
+
+/**
+   Get a random greeting message from the genie
+*/
+void getGreetingMessage() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected!");
+    return;
+  }
+  
+  HTTPClient http;
+  String url = String(serviceUrl) + "/hello";
+  
+  http.begin(url);
+  
+  int httpCode = http.GET();
+  
+  if (httpCode > 0) {
+    String response = http.getString();
+    
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, response);
+    
+    if (!error) {
+      if (doc["status"] == "success") {
+        Serial.print("Greeting: ");
+        Serial.println(doc["text"].as<String>());
+        Serial.print("Filename: ");
+        Serial.println(doc["filename"].as<String>());
+      }
+    } else {
+      Serial.println("Failed to parse JSON response");
     }
   } else {
     Serial.print("HTTP Request failed. Error: ");

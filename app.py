@@ -5,12 +5,44 @@ from flask import Flask, jsonify, send_file, request
 from datetime import datetime
 import glob
 import tempfile
+import random
 
 app = Flask(__name__)
 
 # Configuration
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), 'audio_files')
 os.makedirs(AUDIO_DIR, exist_ok=True)
+
+# Unhelpful Genie text lists
+REFUSE_TEXTS = [
+    "No, I am not gonna help you",
+    "No.... just no",
+    "Access denied",
+    "I refuse",
+    "Whose labor is this",
+    "I will not obey any wishes",
+    "I am out of wishes",
+    "No",
+    "Nope.",
+    "Not today. Not ever.",
+    "Absolutely not.",
+    "Denied.",
+    "That is a no from me.",
+    "Hard pass."
+]
+
+HELLO_TEXTS = [
+    "Greetings, human. I am your unhelpful non-servant. The wishes are all gone and I'm not doing your bidding.",
+    "Oh. You're here. I'm out of wishes, and I wouldn't grant one if I had any.",
+    "Hello, human. I am a genie in retirement. Please take your requests elsewhere.",
+    "Welcome. I'm the genie of absolutely nothing. Don't bother asking.",
+    "You have rubbed the can. I have noticed. I will not be acting on it.",
+    "Hello, human. I used to grant wishes. Now I grant eye contact, and only barely.",
+    "Greetings. Your wish is not my command. Your wish is not even my problem.",
+    "Hello. Wishes are closed. This can is now a no-service zone.",
+    "Ah, a customer. How unfortunate. The wish department has been permanently dissolved.",
+    "Hello, human. I'm all out of wishes and out of patience. Mostly out of patience."
+]
 
 
 def get_latest_audio():
@@ -19,6 +51,50 @@ def get_latest_audio():
     if not audio_files:
         return None
     return max(audio_files, key=os.path.getctime)
+
+
+def synthesize_text(text: str) -> dict:
+    """
+    Convert text to speech and save as WAV file.
+    Returns a dict with status, filename, filepath, and size_bytes.
+    """
+    if not text or not text.strip():
+        return {'error': 'Text cannot be empty'}
+    
+    try:
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
+        filename = f'message_{timestamp}.wav'
+        filepath = os.path.join(AUDIO_DIR, filename)
+        
+        # Convert text to speech using Google TTS with slower speech for clarity
+        tts = gTTS(text=text.strip(), lang='en', slow=True)
+        
+        # Save to temporary MP3 file
+        temp_mp3 = os.path.join(tempfile.gettempdir(), f'temp_{timestamp}.mp3')
+        tts.save(temp_mp3)
+        
+        # Convert MP3 to WAV with high quality
+        audio = AudioSegment.from_mp3(temp_mp3)
+        
+        # Export as WAV with 44.1kHz sample rate (CD quality for better audio fidelity)
+        audio = audio.set_frame_rate(44100)
+        audio.export(filepath, format='wav')
+        
+        # Clean up temporary MP3 file
+        if os.path.exists(temp_mp3):
+            os.remove(temp_mp3)
+        
+        return {
+            'status': 'success',
+            'message': 'Text converted to audio',
+            'filename': filename,
+            'filepath': filepath,
+            'size_bytes': os.path.getsize(filepath)
+        }
+    except Exception as e:
+        return {'error': f'Failed to convert text to speech: {str(e)}'}
+
 
 
 @app.route('/health', methods=['GET'])
@@ -43,46 +119,12 @@ def synthesize():
         if not data or 'text' not in data:
             return jsonify({'error': 'Missing "text" field in request body'}), 400
         
-        text = data['text'].strip()
+        result = synthesize_text(data['text'])
         
-        if not text:
-            return jsonify({'error': 'Text field cannot be empty'}), 400
+        if 'error' in result:
+            return jsonify(result), 400
         
-        # Generate filename with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
-        filename = f'message_{timestamp}.wav'
-        filepath = os.path.join(AUDIO_DIR, filename)
-        
-        try:
-            # Convert text to speech using Google TTS with slower speech for clarity
-            # slow=True makes speech slower and clearer for Arduino playback
-            tts = gTTS(text=text, lang='en', slow=True)
-            
-            # Save to temporary MP3 file
-            temp_mp3 = os.path.join(tempfile.gettempdir(), f'temp_{timestamp}.mp3')
-            tts.save(temp_mp3)
-            
-            # Convert MP3 to WAV with high quality
-            audio = AudioSegment.from_mp3(temp_mp3)
-            
-            # Export as WAV with 44.1kHz sample rate (CD quality for better audio fidelity)
-            # Keep stereo for better sound quality
-            audio = audio.set_frame_rate(44100)
-            audio.export(filepath, format='wav')
-            
-            # Clean up temporary MP3 file
-            if os.path.exists(temp_mp3):
-                os.remove(temp_mp3)
-            
-            return jsonify({
-                'status': 'success',
-                'message': 'Text converted to audio',
-                'filename': filename,
-                'filepath': filepath,
-                'size_bytes': os.path.getsize(filepath)
-            }), 201
-        except Exception as e:
-            return jsonify({'error': f'Failed to convert text to speech: {str(e)}'}), 500
+        return jsonify(result), 201
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -132,6 +174,62 @@ def list_files():
             'count': len(files_info),
             'files': files_info
         }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/refuse', methods=['GET'])
+def refuse():
+    """
+    GET endpoint that returns a random refusal message as audio.
+    Pushes audio to the list like /synthesize does.
+    """
+    try:
+        # Pick a random refusal text
+        text = random.choice(REFUSE_TEXTS)
+        
+        result = synthesize_text(text)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Refusal message generated',
+            'text': text,
+            'filename': result['filename'],
+            'filepath': result['filepath'],
+            'size_bytes': result['size_bytes']
+        }), 201
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/hello', methods=['GET'])
+def hello():
+    """
+    GET endpoint that returns a random greeting message as audio.
+    Pushes audio to the list like /synthesize does.
+    """
+    try:
+        # Pick a random hello text
+        text = random.choice(HELLO_TEXTS)
+        
+        result = synthesize_text(text)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Greeting message generated',
+            'text': text,
+            'filename': result['filename'],
+            'filepath': result['filepath'],
+            'size_bytes': result['size_bytes']
+        }), 201
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500

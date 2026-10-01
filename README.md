@@ -64,6 +64,36 @@ List all available audio files.
 }
 ```
 
+### GET `/refuse`
+Get a random refusal message converted to audio and added to the list.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Refusal message generated",
+  "text": "No, I am not gonna help you",
+  "filename": "message_20240101_120530_123.wav",
+  "filepath": "/path/to/message_20240101_120530_123.wav",
+  "size_bytes": 45632
+}
+```
+
+### GET `/hello`
+Get a random greeting message from the unhelpful genie, converted to audio and added to the list.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Greeting message generated",
+  "text": "Greetings, human. I am your unhelpful non-servant. The wishes are all gone and I'm not doing your bidding.",
+  "filename": "message_20240101_120530_124.wav",
+  "filepath": "/path/to/message_20240101_120530_124.wav",
+  "size_bytes": 67890
+}
+```
+
 ### GET `/health`
 Health check endpoint.
 
@@ -240,6 +270,23 @@ Edit the `set_frame_rate()` call in `app.py`:
 To modify audio channels, add this line after `audio = AudioSegment.from_mp3(temp_mp3)`:
 - `audio = audio.set_channels(1)` - Mono (smaller files)
 - `audio = audio.set_channels(2)` - Stereo (current, better quality)
+
+### Customize refusal and greeting texts
+Edit the `REFUSE_TEXTS` and `HELLO_TEXTS` lists in `app.py` to add your own messages:
+
+```python
+REFUSE_TEXTS = [
+    "No, I am not gonna help you",
+    "Custom refusal message",
+    # Add more as needed
+]
+
+HELLO_TEXTS = [
+    "Hello, I am an unhelpful genie",
+    "Custom greeting message",
+    # Add more as needed
+]
+```
 
 ### Add authentication
 Wrap endpoints with authentication (e.g., using Flask-HTTPAuth):
