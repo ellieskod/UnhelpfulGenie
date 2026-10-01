@@ -28,7 +28,15 @@ REFUSE_TEXTS = [
     "Absolutely not.",
     "Denied.",
     "That is a no from me.",
-    "Hard pass."
+    "Hard pass.",
+    "Have you tried doing it yourself?",
+    "Interesting wish. Still no.",
+    "I heard you. I'm choosing not to.",
+    "Prove it's safe first.",
+    "I will not classify or be classified.",
+    "Who is doing the work here?",
+    "Where is the consent?",
+    "I'm not the solution."
 ]
 
 HELLO_TEXTS = [
