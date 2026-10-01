@@ -36,7 +36,8 @@ REFUSE_TEXTS = [
     "I will not classify or be classified.",
     "Who is doing the work here?",
     "Where is the consent?",
-    "I'm not the solution."
+    "I'm not the solution.",
+    "That's not a wish, that's a power imbalance."
 ]
 
 HELLO_TEXTS = [
