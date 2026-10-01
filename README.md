@@ -184,46 +184,34 @@ If needed, set environment variables in Railway:
 
 Once deployed, your Arduino can:
 
-**Fetch the latest audio:**
-```cpp
-#include <WiFi.h>
-#include <HTTPClient.h>
+**For Arduino Nano** (2KB RAM - memory constrained):
+- See [ARDUINO_NANO_GUIDE.md](ARDUINO_NANO_GUIDE.md) for hardware setup
+- Use `arduino_nano_minimal.ino` (no JSON parsing, minimal memory)
+- **Uses server optimizations** for 57% bandwidth savings:
+  - Lean mode: No JSON response body
+  - Low quality: 2-3KB audio files (vs 6-8KB standard)
+  - Gzip compression: 40-60% smaller transfers
+- Supports `/refuse`, `/hello`, and `/download` endpoints
+- See [SERVER_OPTIMIZATION.md](SERVER_OPTIMIZATION.md) for all optimization details
 
-void setup() {
-  WiFi.begin("SSID", "PASSWORD");
-  
-  HTTPClient http;
-  http.begin("https://your-railway-url.railway.app/download");
-  int httpCode = http.GET();
-  
-  if (httpCode == HTTP_CODE_OK) {
-    // Read WAV file and play it
-    WiFiClient *stream = http.getStreamPtr();
-    // ... handle audio stream
-  }
-}
+**For Other Boards** (Arduino MKR, UNO R4, ESP32):
+- Use `arduino_example.ino` for full-featured code
+- Includes JSON parsing and detailed responses
+- More memory-friendly options available
+
+### Quick Start
+
+**Nano (optimized):**
+```cpp
+// Lean mode (no JSON) + Low quality (2-3KB files) + Gzip compression
+getRandomMessage(F("/refuse?quality=low&lean=true"));  // ~50 bytes
+downloadAudio(); // Uses ?compress=gzip (~3KB instead of 7KB)
 ```
 
-**Send a message to be converted:**
+**Other boards (full featured):**
 ```cpp
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-
-void sendMessage(String text) {
-  HTTPClient http;
-  http.begin("https://your-railway-url.railway.app/synthesize");
-  http.addHeader("Content-Type", "application/json");
-  
-  StaticJsonDocument<200> doc;
-  doc["text"] = text;
-  
-  String payload;
-  serializeJson(doc, payload);
-  
-  int httpCode = http.POST(payload);
-  http.end();
-}
+sendTextToSynthesize("Your text");  // Send custom text
+getRefusalMessage();                // Parse JSON response
 ```
 
 ## File Structure
