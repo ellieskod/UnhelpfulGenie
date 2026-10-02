@@ -299,14 +299,6 @@ def pres():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/health', methods=['GET'])
-def health():
-    """
-    GET endpoint for service health check.
-    """
-    return jsonify({'status': 'ok', 'service': 'TTS Service'}), 200
-
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
