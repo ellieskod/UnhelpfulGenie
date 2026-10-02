@@ -260,9 +260,10 @@ def latest():
 @app.route('/refuse', methods=['GET'])
 def refuse():
     """
-    GET endpoint that returns a random refusal message as audio.
-    Pushes audio to the list like /synthesize does.
+    GET endpoint that queues a random refusal message to the wait queue.
     """
+    global message_queue
+    
     try:
         # Pick a random refusal text
         text = random.choice(REFUSE_TEXTS)
@@ -272,13 +273,17 @@ def refuse():
         if 'error' in result:
             return jsonify(result), 400
         
+        # Queue the audio file
+        filename = result['filename']
+        message_queue.append(filename)
+        
         return jsonify({
             'status': 'success',
-            'message': 'Refusal message generated',
+            'message': 'Refusal message queued',
             'text': text,
-            'filename': result['filename'],
-            'filepath': result['filepath'],
-            'size_bytes': result['size_bytes']
+            'filename': filename,
+            'size_bytes': result['size_bytes'],
+            'queued': True
         }), 201
     
     except Exception as e:
@@ -288,9 +293,10 @@ def refuse():
 @app.route('/hello', methods=['GET'])
 def hello():
     """
-    GET endpoint that returns a random greeting message as audio.
-    Pushes audio to the list like /synthesize does.
+    GET endpoint that queues a random greeting message to the wait queue.
     """
+    global message_queue
+    
     try:
         # Pick a random hello text
         text = random.choice(HELLO_TEXTS)
@@ -300,13 +306,17 @@ def hello():
         if 'error' in result:
             return jsonify(result), 400
         
+        # Queue the audio file
+        filename = result['filename']
+        message_queue.append(filename)
+        
         return jsonify({
             'status': 'success',
-            'message': 'Greeting message generated',
+            'message': 'Greeting message queued',
             'text': text,
-            'filename': result['filename'],
-            'filepath': result['filepath'],
-            'size_bytes': result['size_bytes']
+            'filename': filename,
+            'size_bytes': result['size_bytes'],
+            'queued': True
         }), 201
     
     except Exception as e:
