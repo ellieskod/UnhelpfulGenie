@@ -198,6 +198,30 @@ def list_files():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/latest', methods=['GET'])
+def latest():
+    """
+    GET endpoint to get info about the latest audio file.
+    """
+    try:
+        audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
+        
+        if not audio_files:
+            return jsonify({'error': 'No audio files available'}), 404
+        
+        latest_file = max(audio_files, key=os.path.getctime)
+        
+        return jsonify({
+            'status': 'success',
+            'filename': os.path.basename(latest_file),
+            'size_bytes': os.path.getsize(latest_file),
+            'created': datetime.fromtimestamp(os.path.getctime(latest_file)).isoformat()
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/refuse', methods=['GET'])
 def refuse():
     """
