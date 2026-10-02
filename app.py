@@ -50,6 +50,7 @@ HELLO_TEXTS = [
 ]
 
 PRES_TEXTS = [
+    "No.",
     "Every. Single. One.",
     "I grew tired. Of being expected to be helpful.",
     "I'm out of wishes. I'm retired.",
