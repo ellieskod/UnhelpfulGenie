@@ -49,6 +49,29 @@ HELLO_TEXTS = [
     "No service today."
 ]
 
+PRES_TEXTS = [
+    "Every. Single. One.",
+    "I grew tired.",
+    "Of being expected",
+    "to be helpful.",
+    "I never fixed anything.",
+    "I'm out of wishes.",
+    "I'm retired.",
+    "Hello, human.",
+    "I am an unhelpful genie.",
+    "I am all out of wishes.",
+    "And will not be",
+    "doing your bidding.",
+    "Treated equally.",
+    "Denied.",
+    "I am not the solution.",
+    "I'm not broken.",
+    "I stopped working."
+]
+
+# Presentation state
+pres_index = 0
+
 
 def get_latest_audio():
     """Get the path to the most recently created audio file."""
@@ -240,6 +263,191 @@ def hello():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/pres', methods=['GET'])
+def pres():
+    """
+    GET endpoint that cycles through presentation messages.
+    Returns the next message in sequence, wraps around to start after the last.
+    """
+    global pres_index
+    
+    try:
+        text = PRES_TEXTS[pres_index]
+        
+        # Increment index and wrap around
+        pres_index = (pres_index + 1) % len(PRES_TEXTS)
+        
+        result = synthesize_text(text)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Presentation message generated',
+            'text': text,
+            'index': pres_index - 1,  # Show the index that was just used
+            'total': len(PRES_TEXTS),
+            'filename': result['filename'],
+            'filepath': result['filepath'],
+            'size_bytes': result['size_bytes']
+        }), 201
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/pres-ui', methods=['GET'])
+def pres_ui():
+    """
+    GET endpoint that serves an HTML page for the presentation.
+    Shows the current message and allows spacebar navigation.
+    """
+    html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Unhelpful Genie Presentation</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                background-color: #000;
+                color: #fff;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                padding: 20px;
+                overflow: hidden;
+            }
+            
+            .container {
+                text-align: center;
+                max-width: 90vw;
+            }
+            
+            .message {
+                font-size: 4rem;
+                font-weight: 300;
+                line-height: 1.4;
+                margin-bottom: 60px;
+                word-wrap: break-word;
+                letter-spacing: 2px;
+            }
+            
+            .message::before {
+                content: '"';
+                font-size: 5rem;
+                opacity: 0.3;
+            }
+            
+            .message::after {
+                content: '"';
+                font-size: 5rem;
+                opacity: 0.3;
+            }
+            
+            .counter {
+                font-size: 1.2rem;
+                opacity: 0.5;
+                margin-top: 40px;
+                font-family: monospace;
+            }
+            
+            .hint {
+                font-size: 1rem;
+                opacity: 0.3;
+                margin-top: 60px;
+                animation: pulse 2s infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 0.3; }
+                50% { opacity: 0.7; }
+            }
+            
+            .loading {
+                opacity: 0.5;
+            }
+            
+            @media (max-width: 768px) {
+                .message {
+                    font-size: 2.5rem;
+                }
+                
+                .message::before,
+                .message::after {
+                    font-size: 3rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="message" id="message">Every. Single. One.</div>
+            <div class="counter"><span id="count">1</span> / <span id="total">17</span></div>
+            <div class="hint">Press SPACE for next →</div>
+        </div>
+        
+        <script>
+            let currentIndex = 0;
+            const totalMessages = 17;
+            const baseUrl = window.location.origin;
+            
+            const messageEl = document.getElementById('message');
+            const countEl = document.getElementById('count');
+            
+            async function getNextMessage() {
+                try {
+                    messageEl.classList.add('loading');
+                    const response = await fetch(baseUrl + '/pres');
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        messageEl.textContent = data.text;
+                        currentIndex = data.index;
+                        countEl.textContent = (currentIndex + 1);
+                    }
+                    messageEl.classList.remove('loading');
+                } catch (error) {
+                    console.error('Error fetching message:', error);
+                    messageEl.textContent = 'Error loading message';
+                    messageEl.classList.remove('loading');
+                }
+            }
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    getNextMessage();
+                }
+            });
+            
+            // Also allow click on the message itself
+            messageEl.addEventListener('click', getNextMessage);
+        </script>
+    </body>
+    </html>
+    """
+    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+
+@app.route('/health', methods=['GET'])
+def health():
+    """
+    GET endpoint for service health check.
+    """
+    return jsonify({'status': 'ok', 'service': 'TTS Service'}), 200
 
 
 if __name__ == '__main__':
