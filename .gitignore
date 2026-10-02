@@ -32,3 +32,6 @@ venv.bak/
 *.swp
 *.swo
 *~
+*.md
+!README.md
+

@@ -12,11 +12,9 @@ import hashlib
 
 app = Flask(__name__)
 
-# Configuration
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), 'audio_files')
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# Unhelpful Genie text lists
 REFUSE_TEXTS = [
     "No.",
     "Nope.",
@@ -59,29 +57,21 @@ PRES_TEXTS = [
     "I am all out of wishes. And will not be doing your bidding. All Treated equally. All Denied. I'm not broken. I stopped working."
 ]
 
-# Presentation state
 pres_index = 0
-
-# Message queue for /wait endpoint
 message_queue = deque()
-
-# Pre-generated presentation audio cache
 pres_audio_cache = {}
 
 
 def pregen_presentation_audio():
-    """Pre-generate all presentation audio files at startup."""
     global pres_audio_cache
     print("[INFO] Pre-generating presentation audio...")
     
     for i, text in enumerate(PRES_TEXTS):
-        # Use text hash for unique filename
         text_hash = hashlib.md5(text.encode()).hexdigest()
         filename = f'pres_{i:02d}_{text_hash}.wav'
         filepath = os.path.join(AUDIO_DIR, filename)
         
         try:
-            # Generate if doesn't exist
             if not os.path.exists(filepath):
                 result = synthesize_text(text)
                 if 'error' not in result:
@@ -96,7 +86,8 @@ def pregen_presentation_audio():
     
     print(f"[INFO] Pre-generation complete. {len(pres_audio_cache)} slides cached.")
 
-    """Get the path to the most recently created audio file."""
+
+def get_latest_audio():
     audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
     if not audio_files:
         return None
@@ -104,36 +95,24 @@ def pregen_presentation_audio():
 
 
 def synthesize_text(text: str) -> dict:
-    """
-    Convert text to speech and save as WAV file.
-    Optimized for Arduino Nano: 8kHz mono with slow speech (~1-1.5 KB files).
-    Returns a dict with status, filename, filepath, and size_bytes.
-    """
     if not text or not text.strip():
         return {'error': 'Text cannot be empty'}
     
     try:
-        # Generate filename with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
         filename = f'message_{timestamp}.wav'
         filepath = os.path.join(AUDIO_DIR, filename)
         
-        # Convert text to speech using Google TTS with slowest speech for clarity
         tts = gTTS(text=text.strip(), lang='en', slow=True)
         
-        # Save to temporary MP3 file
         temp_mp3 = os.path.join(tempfile.gettempdir(), f'temp_{timestamp}.mp3')
         tts.save(temp_mp3)
         
-        # Convert MP3 to WAV with low quality for Nano
         audio = AudioSegment.from_mp3(temp_mp3)
-        
-        # Low quality: 8kHz mono (~1-1.5 KB files) with slow speech
         audio = audio.set_frame_rate(8000)
         audio = audio.set_channels(1)
         audio.export(filepath, format='wav')
         
-        # Clean up temporary MP3 file
         if os.path.exists(temp_mp3):
             os.remove(temp_mp3)
         
@@ -149,22 +128,14 @@ def synthesize_text(text: str) -> dict:
 
 
 
+
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint."""
     return jsonify({'status': 'ok', 'service': 'TTS Service'}), 200
 
 
 @app.route('/synthesize', methods=['POST'])
 def synthesize():
-    """
-    POST endpoint to convert text to speech and save as WAV.
-    
-    Expected JSON:
-    {
-        "text": "Your message here"
-    }
-    """
     try:
         data = request.get_json()
         
@@ -184,9 +155,6 @@ def synthesize():
 
 @app.route('/download', methods=['GET'])
 def download():
-    """
-    GET endpoint for Arduino to download the latest WAV file.
-    """
     try:
         latest_file = get_latest_audio()
         
@@ -206,9 +174,6 @@ def download():
 
 @app.route('/list', methods=['GET'])
 def list_files():
-    """
-    GET endpoint to list all available audio files.
-    """
     try:
         audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
         audio_files.sort(key=os.path.getctime, reverse=True)
@@ -233,9 +198,6 @@ def list_files():
 
 @app.route('/latest', methods=['GET'])
 def latest():
-    """
-    GET endpoint to get info about the latest audio file.
-    """
     try:
         audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
         
@@ -257,13 +219,9 @@ def latest():
 
 @app.route('/refuse', methods=['GET'])
 def refuse():
-    """
-    GET endpoint that queues a random refusal message to the wait queue.
-    """
     global message_queue
     
     try:
-        # Pick a random refusal text
         text = random.choice(REFUSE_TEXTS)
         
         result = synthesize_text(text)
@@ -271,7 +229,6 @@ def refuse():
         if 'error' in result:
             return jsonify(result), 400
         
-        # Queue the audio file
         filename = result['filename']
         message_queue.append(filename)
         
@@ -290,13 +247,9 @@ def refuse():
 
 @app.route('/hello', methods=['GET'])
 def hello():
-    """
-    GET endpoint that queues a random greeting message to the wait queue.
-    """
     global message_queue
     
     try:
-        # Pick a random hello text
         text = random.choice(HELLO_TEXTS)
         
         result = synthesize_text(text)
@@ -304,7 +257,6 @@ def hello():
         if 'error' in result:
             return jsonify(result), 400
         
-        # Queue the audio file
         filename = result['filename']
         message_queue.append(filename)
         
@@ -323,22 +275,16 @@ def hello():
 
 @app.route('/pres', methods=['GET'])
 def pres():
-    """
-    GET endpoint that queues the next presentation message.
-    Queues the pre-generated audio for the /wait endpoint to pick up.
-    """
     global pres_index, message_queue
     
     try:
         current_index = pres_index
         text = PRES_TEXTS[current_index]
         
-        # Queue the pre-generated audio file
         if current_index in pres_audio_cache:
             filename = pres_audio_cache[current_index]
             message_queue.append(filename)
             
-            # Increment index and wrap around
             pres_index = (current_index + 1) % len(PRES_TEXTS)
             
             return jsonify({
@@ -358,18 +304,12 @@ def pres():
 
 @app.route('/wait', methods=['GET'])
 def wait():
-    """
-    GET endpoint that returns queued presentation audio.
-    Holds the connection open for up to 20 seconds waiting for a message.
-    Returns the audio file immediately if queued, or 204 No Content on timeout.
-    """
     global message_queue
     
     start_time = time.time()
     timeout = 20
     
     try:
-        # Check queue periodically for up to 20 seconds
         while time.time() - start_time < timeout:
             if message_queue:
                 filename = message_queue.popleft()
@@ -383,13 +323,10 @@ def wait():
                         download_name=filename
                     )
                 else:
-                    # File doesn't exist, try next in queue
                     continue
             
-            # Sleep 100ms before checking again
             time.sleep(0.1)
         
-        # Timeout - return 204 No Content
         return '', 204
     
     except Exception as e:
@@ -398,7 +335,6 @@ def wait():
 
 
 if __name__ == '__main__':
-    # Pre-generate all presentation audio at startup
     pregen_presentation_audio()
     
     port = int(os.environ.get('PORT', 5000))
