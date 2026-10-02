@@ -51,19 +51,14 @@ HELLO_TEXTS = [
 
 PRES_TEXTS = [
     "Every. Single. One.",
-    "I grew tired.",
-    "Of being expected",
-    "to be helpful.",
+    "I grew tired. Of being expected to be helpful.",
     "I never fixed anything.",
     "I'm out of wishes.",
     "I'm retired.",
-    "Hello, human.",
-    "I am an unhelpful genie.",
+    "Hello, human. I am an unhelpful genie.",
     "I am all out of wishes.",
-    "And will not be",
-    "doing your bidding.",
-    "Treated equally.",
-    "Denied.",
+    "And will not be doing your bidding.",
+    "All Treated equally. All Denied.",
     "I am not the solution.",
     "I'm not broken.",
     "I stopped working."
