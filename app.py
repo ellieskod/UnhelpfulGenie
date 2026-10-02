@@ -6,6 +6,9 @@ from datetime import datetime
 import glob
 import tempfile
 import random
+import time
+from collections import deque
+import hashlib
 
 app = Flask(__name__)
 
@@ -61,8 +64,40 @@ PRES_TEXTS = [
 # Presentation state
 pres_index = 0
 
+# Message queue for /wait endpoint
+message_queue = deque()
 
-def get_latest_audio():
+# Pre-generated presentation audio cache
+pres_audio_cache = {}
+
+
+def pregen_presentation_audio():
+    """Pre-generate all presentation audio files at startup."""
+    global pres_audio_cache
+    print("[INFO] Pre-generating presentation audio...")
+    
+    for i, text in enumerate(PRES_TEXTS):
+        # Use text hash for unique filename
+        text_hash = hashlib.md5(text.encode()).hexdigest()
+        filename = f'pres_{i:02d}_{text_hash}.wav'
+        filepath = os.path.join(AUDIO_DIR, filename)
+        
+        try:
+            # Generate if doesn't exist
+            if not os.path.exists(filepath):
+                result = synthesize_text(text)
+                if 'error' not in result:
+                    os.rename(result['filepath'], filepath)
+                    print(f"[INFO] Generated: {filename}")
+                else:
+                    print(f"[ERROR] Failed to generate {filename}: {result['error']}")
+            
+            pres_audio_cache[i] = filename
+        except Exception as e:
+            print(f"[ERROR] Error pre-generating audio for slide {i}: {str(e)}")
+    
+    print(f"[INFO] Pre-generation complete. {len(pres_audio_cache)} slides cached.")
+
     """Get the path to the most recently created audio file."""
     audio_files = glob.glob(os.path.join(AUDIO_DIR, '*.wav'))
     if not audio_files:
@@ -281,37 +316,83 @@ def hello():
 @app.route('/pres', methods=['GET'])
 def pres():
     """
-    GET endpoint that cycles through presentation messages.
-    Returns the next message in sequence, wraps around to start after the last.
+    GET endpoint that queues the next presentation message.
+    Queues the pre-generated audio for the /wait endpoint to pick up.
     """
-    global pres_index
+    global pres_index, message_queue
     
     try:
-        text = PRES_TEXTS[pres_index]
+        current_index = pres_index
+        text = PRES_TEXTS[current_index]
         
-        # Increment index and wrap around
-        pres_index = (pres_index + 1) % len(PRES_TEXTS)
-        
-        result = synthesize_text(text)
-        
-        if 'error' in result:
-            return jsonify(result), 400
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Presentation message generated',
-            'text': text,
-            'index': pres_index - 1,  # Show the index that was just used
-            'total': len(PRES_TEXTS),
-            'filename': result['filename'],
-            'filepath': result['filepath'],
-            'size_bytes': result['size_bytes']
-        }), 201
+        # Queue the pre-generated audio file
+        if current_index in pres_audio_cache:
+            filename = pres_audio_cache[current_index]
+            message_queue.append(filename)
+            
+            # Increment index and wrap around
+            pres_index = (current_index + 1) % len(PRES_TEXTS)
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Presentation message queued',
+                'text': text,
+                'index': current_index,
+                'total': len(PRES_TEXTS),
+                'queued': True
+            }), 201
+        else:
+            return jsonify({'error': f'Presentation audio not pre-generated for slide {current_index}'}), 500
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/wait', methods=['GET'])
+def wait():
+    """
+    GET endpoint that returns queued presentation audio.
+    Holds the connection open for up to 20 seconds waiting for a message.
+    Returns the audio file immediately if queued, or 204 No Content on timeout.
+    """
+    global message_queue
+    
+    start_time = time.time()
+    timeout = 20
+    
+    try:
+        # Check queue periodically for up to 20 seconds
+        while time.time() - start_time < timeout:
+            if message_queue:
+                filename = message_queue.popleft()
+                filepath = os.path.join(AUDIO_DIR, filename)
+                
+                if os.path.exists(filepath):
+                    return send_file(
+                        filepath,
+                        mimetype='audio/wav',
+                        as_attachment=True,
+                        download_name=filename
+                    )
+                else:
+                    # File doesn't exist, try next in queue
+                    continue
+            
+            # Sleep 100ms before checking again
+            time.sleep(0.1)
+        
+        # Timeout - return 204 No Content
+        return '', 204
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
 if __name__ == '__main__':
+    # Pre-generate all presentation audio at startup
+    pregen_presentation_audio()
+    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
