@@ -43,10 +43,8 @@ REFUSE_TEXTS = [
 HELLO_TEXTS = [
     "Hello human.",
     "Oh. You're here.",
-    "I'm out of wishes.",
     "Wishes are closed.",
     "I'm retired. Go away.",
-    "You rubbed the can.",
     "The genie is out.",
     "Not your servant.",
     "No service today."
